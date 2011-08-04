@@ -1,5 +1,5 @@
 use "Form.sml";
-signature SEMANTICTABLEAUX = sig
+signature SEMANTICTABLEAUXv2 = sig
 	datatype tableaux = tableauxAbs | tableaux1 of Form.form | tableaux2 of Form.form*tableaux | tableaux3 of Form.form*tableaux*tableaux
 	exception InvalidInput
 	val generateTableaux : Form.form -> tableaux
@@ -7,9 +7,9 @@ signature SEMANTICTABLEAUX = sig
 	val isSatisfiable : Form.form -> bool
 	val isContradiction : Form.form -> bool
 	val printTableaux : tableaux -> unit
-	val printContradictionTree : string -> unit
+	val printValidityTree : string -> unit
 end
-structure SemanticTableaux :> SEMANTICTABLEAUX = struct
+structure SemanticTableauxv2 :> SEMANTICTABLEAUXv2 = struct
 	datatype tableaux = tableauxAbs | tableaux1 of Form.form | tableaux2 of Form.form*tableaux | tableaux3 of Form.form*tableaux*tableaux
 	exception InvalidInput
 	fun generateTableaux(f) = 
@@ -18,8 +18,8 @@ structure SemanticTableaux :> SEMANTICTABLEAUX = struct
 				| tmpGenerateTableaux([Form.propSymb P]) = (tableaux1 (Form.propSymb P))
 				| tmpGenerateTableaux([Form.Negation(Form.propSymb P)]) = (tableaux1 (Form.Negation(Form.propSymb P)))
 				| tmpGenerateTableaux([Form.Negation(Form.Absurdum)]) = (tableaux1 (Form.Negation(Form.Absurdum)))
-				| tmpGenerateTableaux(Form.Conjunction(A,B)::xs) = tableaux2 (Form.Conjunction(A,B),tmpGenerateTableaux([A,B] @ xs))
-				| tmpGenerateTableaux(Form.Disjunction(A,B)::xs) = tableaux3 (Form.Disjunction(A,B),tmpGenerateTableaux(A::xs),tmpGenerateTableaux(B::xs))
+				| tmpGenerateTableaux(Form.Disjunction(A,B)::xs) = tableaux2 (Form.Disjunction(A,B),tmpGenerateTableaux([A,B] @ xs))
+				| tmpGenerateTableaux(Form.Conjunction(A,B)::xs) = tableaux3 (Form.Conjunction(A,B),tmpGenerateTableaux(A::xs),tmpGenerateTableaux(B::xs))
 				| tmpGenerateTableaux(Form.Implication(A,B)::xs) = tableaux2 (Form.Implication(A,B),tmpGenerateTableaux(Form.Disjunction(Form.Negation(A),B)::xs))
 				| tmpGenerateTableaux(Form.Negation(Form.Conjunction(A,B))::xs) = tableaux2 (Form.Negation(Form.Conjunction(A,B)),tmpGenerateTableaux(Form.Disjunction(Form.Negation(A),Form.Negation(B))::xs))
 				| tmpGenerateTableaux(Form.Negation(Form.Disjunction(A,B))::xs) = tableaux2 (Form.Negation(Form.Disjunction(A,B)),tmpGenerateTableaux(Form.Conjunction(Form.Negation(A),Form.Negation(B))::xs))
@@ -30,8 +30,8 @@ structure SemanticTableaux :> SEMANTICTABLEAUX = struct
 		in tmpGenerateTableaux([f])
 		end
 		handle InvalidInput => raise InvalidInput
-	fun isEveryNodeClosed(tableauxAbs,_) = true
-		| isEveryNodeClosed(tableaux1(Form.Negation(Form.Absurdum)),_) = false
+	fun isEveryNodeClosed(tableauxAbs,_) = false
+		| isEveryNodeClosed(tableaux1(Form.Negation(Form.Absurdum)),_) = true
 		| isEveryNodeClosed(tableaux1(Form.propSymb(x)),[]) = false
 		| isEveryNodeClosed(tableaux1(Form.propSymb(x)),y::ys) = if (y = Form.Negation(Form.propSymb(x))) then true else isEveryNodeClosed(tableaux1(Form.propSymb(x)),ys)
 		| isEveryNodeClosed(tableaux1(Form.Negation(Form.propSymb(x))),[]) = false
@@ -54,8 +54,8 @@ structure SemanticTableaux :> SEMANTICTABLEAUX = struct
 		| isEveryNodeClosed(tableaux2(Form.Negation(Form.Absurdum),y),z) = isEveryNodeClosed(y,z)
 		| isEveryNodeClosed(tableaux2(_,x),z) = isEveryNodeClosed(x,z)
 		| isEveryNodeClosed(tableaux3(_,x,y),z) = (isEveryNodeClosed(x,z) andalso isEveryNodeClosed(y,z))
-	fun isContradiction(f) = isEveryNodeClosed(generateTableaux(f),[])
-	fun isValid(f) = isContradiction(Form.Negation(f))
+	fun isValid(f) = isEveryNodeClosed(generateTableaux(f),[])
+	fun isContradiction(f) = isValid(Form.Negation(f))
 	fun isSatisfiable(f) = not(isContradiction(f))
 	fun printTableaux(tb) = 
 		let
@@ -66,5 +66,5 @@ structure SemanticTableaux :> SEMANTICTABLEAUX = struct
 		in
 			printer(tb,"\t")
 		end;
-	fun printContradictionTree(str) = (print("Validity of Given Formula : ");(if (isValid(Form.parse(str))) then print("True") else print("False"));print("\n");printTableaux(generateTableaux(Form.Negation(Form.parse(str)))))
+	fun printValidityTree(str) = (print("Validity of Given Formula : ");(if (isValid(Form.parse(str))) then print("True") else print("False"));print("\n");printTableaux(generateTableaux(Form.parse(str))))
 end;
